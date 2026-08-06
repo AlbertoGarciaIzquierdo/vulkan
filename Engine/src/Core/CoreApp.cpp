@@ -2,14 +2,14 @@
 // Created by alberto on 4/8/26.
 //
 
-#include "CoreApp.h"
-#include <utils/TypeAliases.h>
+#include <Engine/Core/CoreApp.h>
+#include <Engine/Utils/TypeAliases.h>
 
 #include <iostream>
 #include <ostream>
 
-#include "vulkan/VInstanceManager.h"
-#include "vulkan/VPhysicalDeviceManager.h"
+#include <Engine/Core/Vulkan/VInstanceManager.h>
+#include "../../include/Engine/Core/Vulkan/VPhysicalDeviceManager.h"
 
 void CoreApp::Run()
 {

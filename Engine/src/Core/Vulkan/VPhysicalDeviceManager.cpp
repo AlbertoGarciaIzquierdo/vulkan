@@ -2,9 +2,9 @@
 // Created by alberto on 4/8/26.
 //
 
-#include "VPhysicalDeviceManager.h"
+#include <Engine/Core/Vulkan/VPhysicalDeviceManager.h>
 
-#include <utils/TypeAliases.h>
+#include <Engine/Utils/TypeAliases.h>
 
 VPhysicalDeviceManager::VPhysicalDeviceManager(const VkInstance& vkInstance)
     : m_vkInstance(vkInstance)

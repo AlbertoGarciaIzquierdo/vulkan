@@ -7,7 +7,7 @@
 
 #include <iostream>
 
-#include "core/CoreApp.h"
+#include <Engine/Core/CoreApp.h>
 
 int main()
 {

@@ -1,3 +1,3 @@
-target_sources(SharpEngine PRIVATE
+target_sources(Engine PRIVATE
         VInstanceManager.cpp
         VPhysicalDeviceManager.cpp)
