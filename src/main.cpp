@@ -11,7 +11,6 @@
 
 int main()
 {
-    /*
     glfwInit();
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -22,15 +21,15 @@ int main()
 
     std::cout << extensionCount << " extensions supported\n";
 
-    while (!glfwWindowShouldClose(window)) {
-
-        glfwPollEvents();
-    }
+    //while (!glfwWindowShouldClose(window)) {
+    //
+    //    glfwPollEvents();
+    //}
 
     glfwDestroyWindow(window);
 
     glfwTerminate();
-    */
+
 
     CoreApp coreApp;
     coreApp.Run();
