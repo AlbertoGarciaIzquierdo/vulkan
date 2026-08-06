@@ -3,6 +3,7 @@ project(SharpEngine LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
 
 find_package(Vulkan REQUIRED)
+find_package(glfw3 REQUIRED)
 
 add_executable(SharpEngine)
 
