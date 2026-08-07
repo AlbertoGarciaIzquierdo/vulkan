@@ -13,11 +13,18 @@
 void CoreApp::Run()
 {
     Logger::Init();
-    initWindow();
-    initVulkan();
-    mainLoop();
-    cleanup();
-    Logger::Shutdown();
+    try
+    {
+        initWindow();
+        initVulkan();
+        mainLoop();
+        cleanup();
+        Logger::Shutdown();
+    }
+    catch (...)
+    {
+        Logger::Shutdown();
+    }
 }
 
 void CoreApp::initWindow()
