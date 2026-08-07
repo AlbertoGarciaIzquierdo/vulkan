@@ -1,3 +1,4 @@
+add_subdirectory(Logger)
 add_subdirectory(Vulkan)
 
 target_sources(Engine

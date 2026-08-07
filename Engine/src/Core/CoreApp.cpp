@@ -3,21 +3,21 @@
 //
 
 #include <Engine/Core/CoreApp.h>
-#include <Engine/Utils/TypeAliases.h>
 
 #include <iostream>
 #include <ostream>
 
 #include <Engine/Core/Vulkan/VInstanceManager.h>
-#include <Engine/Core/Vulkan/VDeviceManager.h>
 #include <Engine/Defaults/DefaultConfig.h>
 
 void CoreApp::Run()
 {
+    Logger::Init();
     initWindow();
     initVulkan();
     mainLoop();
     cleanup();
+    Logger::Shutdown();
 }
 
 void CoreApp::initWindow()
@@ -33,10 +33,9 @@ void CoreApp::initVulkan()
 {
     uint32_t extensionCount = 0;
     vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-    std::cout << extensionCount << " extensions supported\n";
+    Logger::Log(LogLevel::Debug, "{} Extensions supported", extensionCount);
 
     UniqPtr<VInstanceManager> instanceManager = std::make_unique<VInstanceManager>();
-    UniqPtr<VDeviceManager> physicalDevice = std::make_unique<VDeviceManager>(instanceManager.get()->getVkInstance());
 }
 
 void CoreApp::mainLoop()
