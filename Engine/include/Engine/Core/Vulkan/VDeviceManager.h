@@ -6,12 +6,12 @@
 
 #include <Engine/Utils/GraphicIncludes.h>
 
-class VPhysicalDeviceManager
+class VDeviceManager
 {
 private:
     VkInstance m_vkInstance;
     bool checkDeviceSuitability(VkPhysicalDevice p_device);
 public:
-    VPhysicalDeviceManager(const VkInstance& vkInstance);
-    ~VPhysicalDeviceManager() = default;
+    VDeviceManager(const vk::Instance& vkInstance);
+    ~VDeviceManager() = default;
 };

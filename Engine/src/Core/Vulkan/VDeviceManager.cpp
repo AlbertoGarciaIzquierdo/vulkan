@@ -2,11 +2,11 @@
 // Created by alberto on 4/8/26.
 //
 
-#include <Engine/Core/Vulkan/VPhysicalDeviceManager.h>
+#include <Engine/Core/Vulkan/VDeviceManager.h>
 
 #include <Engine/Utils/TypeAliases.h>
 
-VPhysicalDeviceManager::VPhysicalDeviceManager(const VkInstance& vkInstance)
+VDeviceManager::VDeviceManager(const vk::Instance& vkInstance)
     : m_vkInstance(vkInstance)
 {
     uint32_t countDevices { 0 };
@@ -27,7 +27,7 @@ VPhysicalDeviceManager::VPhysicalDeviceManager(const VkInstance& vkInstance)
     }
 }
 
-bool VPhysicalDeviceManager::checkDeviceSuitability(VkPhysicalDevice p_device)
+bool VDeviceManager::checkDeviceSuitability(VkPhysicalDevice p_device)
 {
     std::cout << "<----- Checking Devices Suitability ----->\n";
 

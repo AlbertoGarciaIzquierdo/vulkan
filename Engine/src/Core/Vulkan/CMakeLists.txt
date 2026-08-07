@@ -1,3 +1,4 @@
-target_sources(Engine PRIVATE
+target_sources(Engine
+        PRIVATE
         VInstanceManager.cpp
-        VPhysicalDeviceManager.cpp)
+        VDeviceManager.cpp)

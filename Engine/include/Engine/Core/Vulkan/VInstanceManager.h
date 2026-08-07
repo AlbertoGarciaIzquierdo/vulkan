@@ -9,15 +9,15 @@
 class VInstanceManager
 {
 public:
-    VkInstance m_vkInstance {VK_NULL_HANDLE};
+    const vk::raii::Instance& getVkInstance() { return m_vkInstance; };
 private:
-    VkInstanceCreateInfo m_vkInstanceCreateInfo {};
-    VkApplicationInfo m_vkApplicationInfo {};
+    vk::raii::Context  context;
+    vk::raii::Instance m_vkInstance = nullptr;
 
-    void fillInstanceInfo() noexcept;
-    void createInstance() noexcept;
-    void checkLayer() noexcept;
+    void fillInstanceInfo();
+    void createInstance();
+    void checkLayer();
 public:
-    VInstanceManager(const char* p_appName = "App", const char* p_engineName = "Engine", const uint32_t p_appVersion = 1, const uint32_t p_engineVersion = 1) noexcept;
-    ~VInstanceManager() noexcept;
+    VInstanceManager(const char* p_appName = "App", const char* p_engineName = "Engine");
+    ~VInstanceManager();
 };
