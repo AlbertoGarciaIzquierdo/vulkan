@@ -47,20 +47,8 @@ void VInstanceManager::createInstance()
                                       .enabledExtensionCount   = static_cast<uint32_t>(requiredExtensions.size()),
                                       .ppEnabledExtensionNames = requiredExtensions.data()};
 
-    try
-    {
-        m_vkInstance = vk::raii::Instance(m_context, createInfo);
-    }
-    catch (const vk::SystemError& err)
-    {
-        std::cerr << "Vulkan error: " << err.what() << std::endl;
-        return;
-    }
-    catch (const std::exception& err)
-    {
-        std::cerr << "Error: " << err.what() << std::endl;
-        return;
-    }
+
+    m_vkInstance = vk::raii::Instance(m_context, createInfo);
 }
 
 std::vector<char const*> VInstanceManager::getRequiredInstanceExtensions() const

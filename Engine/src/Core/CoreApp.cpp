@@ -13,18 +13,25 @@
 void CoreApp::Run()
 {
     Logger::Init();
+
     try
     {
         initWindow();
         initVulkan();
         mainLoop();
-        cleanup();
-        Logger::Shutdown();
+    }
+    catch (const std::exception& e)
+    {
+        Logger::Log(LogLevel::Error, "Fatal error: {}", e.what());
     }
     catch (...)
     {
-        Logger::Shutdown();
+        Logger::Log(LogLevel::Critical, "Fatal unknown error");
     }
+
+    // Pase lo que pase, intentamos limpiar
+    cleanup();
+    Logger::Shutdown();
 }
 
 void CoreApp::initWindow()
