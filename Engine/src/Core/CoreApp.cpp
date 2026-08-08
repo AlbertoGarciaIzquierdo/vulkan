@@ -22,11 +22,11 @@ void CoreApp::Run()
     }
     catch (const std::exception& e)
     {
-        Logger::Log(LogLevel::Error, "Fatal error: {}", e.what());
+        Logger::Log(LogLevel::Error, "{}", e.what());
     }
     catch (...)
     {
-        Logger::Log(LogLevel::Critical, "Fatal unknown error");
+        Logger::Log(LogLevel::Critical, "Unknown error");
     }
 
     // Pase lo que pase, intentamos limpiar

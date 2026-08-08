@@ -146,6 +146,10 @@ void VInstanceManager::pickPhysicalDevice()
             score += 1000;
         }
 
+        if (deviceProperties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu) {
+            score += 800;
+        }
+
         // Maximum possible size of textures affects graphics quality
         score += deviceProperties.limits.maxImageDimension2D;
 
