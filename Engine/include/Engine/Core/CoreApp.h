@@ -4,6 +4,7 @@
 
 #pragma once
 #include <Engine/Core/BaseApplication.h>
+#include <Engine/Core/Vulkan/VInstanceManager.h>
 
 class GLFWwindow;
 
@@ -20,4 +21,5 @@ private:
     void cleanup();
 
     GLFWwindow* window = nullptr;
+    UniqPtr<VInstanceManager> m_instanceManager = nullptr;
 };

@@ -17,10 +17,12 @@ static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugCallback(vk::DebugUtilsMessageSever
     return vk::False;
 }
 
-VInstanceManager::VInstanceManager()
+VInstanceManager::VInstanceManager(GLFWwindow* window)
+    : m_window(window)
 {
     createInstance();
     setupDebugMessenger();
+    createSurface();
     pickPhysicalDevice();
     createLogicalDevice();
 }
@@ -122,6 +124,15 @@ void VInstanceManager::setupDebugMessenger()
     m_debugMessenger = m_vkInstance.createDebugUtilsMessengerEXT( debugUtilsMessengerCreateInfoEXT );
 }
 
+void VInstanceManager::createSurface()
+{
+    VkSurfaceKHR       _surface;
+    if (glfwCreateWindowSurface(*m_vkInstance, m_window, nullptr, &_surface) != 0) {
+        throw std::runtime_error("failed to create window surface!");
+    }
+    m_surface = vk::raii::SurfaceKHR(m_vkInstance, _surface);
+}
+
 void VInstanceManager::pickPhysicalDevice()
 {
     auto physicalDevices = m_vkInstance.enumeratePhysicalDevices();
@@ -142,8 +153,14 @@ void VInstanceManager::pickPhysicalDevice()
         if (!isDeviceSuitable(pd)) continue;
 
         // Discrete GPUs have a significant performance advantage
-        if (deviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu) {
-            score += 1000;
+        if (deviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
+        {
+            score += 10000;
+        }
+
+        if (deviceProperties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu)
+        {
+            score += 3000;
         }
 
         if (deviceProperties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu) {
@@ -165,8 +182,8 @@ void VInstanceManager::pickPhysicalDevice()
     // Check if the best candidate is suitable at all
     if (!candidates.empty() && candidates.rbegin()->first > 0)
     {
-        physicalDevice = candidates.rbegin()->second;
-        Logger::Log(LogLevel::Debug, "[{}] Selected", physicalDevice.getProperties().deviceName.data());
+        m_physicalDevice = candidates.rbegin()->second;
+        Logger::Log(LogLevel::Debug, "> [{}] Selected", m_physicalDevice.getProperties().deviceName.data());
     }
     else
     {
@@ -176,31 +193,44 @@ void VInstanceManager::pickPhysicalDevice()
 
 void VInstanceManager::createLogicalDevice()
 {
-    // find the index of the first queue family that supports graphics
-    std::vector<vk::QueueFamilyProperties> queueFamilyProperties = physicalDevice.getQueueFamilyProperties();
-    // get the first index into queueFamilyProperties which supports graphics
+    std::vector<vk::QueueFamilyProperties> queueFamilyProperties = m_physicalDevice.getQueueFamilyProperties();
 
-    auto graphicsQueueFamilyProperty = std::ranges::find_if(queueFamilyProperties, [](auto const &qfp) { return (qfp.queueFlags & vk::QueueFlagBits::eGraphics) != static_cast<vk::QueueFlags>(0); });
-    assert(graphicsQueueFamilyProperty != queueFamilyProperties.end() && "No graphics queue family found!");
-    auto graphicsIndex = static_cast<uint32_t>(std::distance(queueFamilyProperties.begin(), graphicsQueueFamilyProperty));
+    uint32_t queueIndex = ~0;
+    for (uint32_t qfpIndex = 0; qfpIndex < queueFamilyProperties.size(); qfpIndex++)
+    {
+      if ((queueFamilyProperties[qfpIndex].queueFlags & vk::QueueFlagBits::eGraphics) &&
+          m_physicalDevice.getSurfaceSupportKHR(qfpIndex, *m_surface))
+      {
+        queueIndex = qfpIndex;
+        break;
+      }
+    }
+    if (queueIndex == ~0)
+    {
+      throw std::runtime_error("Could not find a queue for graphics and present");
+    }
 
-    // query for Vulkan 1.3 features
-    vk::StructureChain<vk::PhysicalDeviceFeatures2,
-    vk::PhysicalDeviceVulkan11Features,
-    vk::PhysicalDeviceVulkan13Features,
-    vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>
-    featureChain = {
-        {},                                    // vk::PhysicalDeviceFeatures2
-        {.shaderDrawParameters = true},        // vk::PhysicalDeviceVulkan11Features
-        {.dynamicRendering = true},            // vk::PhysicalDeviceVulkan13Features
-        {.extendedDynamicState = true}         // vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT
-    };
-    // create a Device
+		vk::StructureChain<vk::PhysicalDeviceFeatures2,
+		                   vk::PhysicalDeviceVulkan11Features,
+		                   vk::PhysicalDeviceVulkan13Features,
+		                   vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>
+		    featureChain = {
+		        {},                                    // vk::PhysicalDeviceFeatures2
+		        {.shaderDrawParameters = true},        // vk::PhysicalDeviceVulkan11Features
+		        {.dynamicRendering = true},            // vk::PhysicalDeviceVulkan13Features
+		        {.extendedDynamicState = true}         // vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT
+		    };
+
     float                     queuePriority = 0.5f;
-    vk::DeviceQueueCreateInfo deviceQueueCreateInfo{.queueFamilyIndex = graphicsIndex, .queueCount = 1, .pQueuePriorities = &queuePriority};
-    vk::DeviceCreateInfo      deviceCreateInfo{.pNext                   = &featureChain.get<vk::PhysicalDeviceFeatures2>(),.queueCreateInfoCount    = 1,.pQueueCreateInfos       = &deviceQueueCreateInfo,.enabledExtensionCount   = static_cast<uint32_t>(requiredDeviceExtension.size()),.ppEnabledExtensionNames = requiredDeviceExtension.data()};
-    device        = vk::raii::Device(physicalDevice, deviceCreateInfo);
-    graphicsQueue = vk::raii::Queue(device, graphicsIndex, 0);
+    vk::DeviceQueueCreateInfo deviceQueueCreateInfo{.queueFamilyIndex = queueIndex, .queueCount = 1, .pQueuePriorities = &queuePriority};
+    vk::DeviceCreateInfo      deviceCreateInfo{.pNext                   = &featureChain.get<vk::PhysicalDeviceFeatures2>(),
+                                               .queueCreateInfoCount    = 1,
+                                               .pQueueCreateInfos       = &deviceQueueCreateInfo,
+                                               .enabledExtensionCount   = static_cast<uint32_t>(m_vrequiredDeviceExtension.size()),
+                                               .ppEnabledExtensionNames = m_vrequiredDeviceExtension.data()};
+
+    m_device = vk::raii::Device( m_physicalDevice, deviceCreateInfo );
+    m_graphicsQueue  = vk::raii::Queue(m_device, queueIndex, 0);
 }
 
 bool VInstanceManager::isDeviceSuitable( vk::raii::PhysicalDevice const & physicalDevice )
@@ -215,7 +245,7 @@ bool VInstanceManager::isDeviceSuitable( vk::raii::PhysicalDevice const & physic
   // Check if all required physicalDevice extensions are available
   auto availableDeviceExtensions = physicalDevice.enumerateDeviceExtensionProperties();
   bool supportsAllRequiredExtensions =
-    std::ranges::all_of( requiredDeviceExtension,
+    std::ranges::all_of( m_vrequiredDeviceExtension,
                          [&availableDeviceExtensions]( auto const & requiredDeviceExtension )
                          {
                            return std::ranges::any_of( availableDeviceExtensions,

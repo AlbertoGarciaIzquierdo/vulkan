@@ -49,7 +49,7 @@ void CoreApp::initVulkan()
     vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
     Logger::Log(LogLevel::Debug, "{} Extensions supported", extensionCount);
 
-    UniqPtr<VInstanceManager> instanceManager = std::make_unique<VInstanceManager>();
+    m_instanceManager = std::make_unique<VInstanceManager>(window);
 }
 
 void CoreApp::mainLoop()

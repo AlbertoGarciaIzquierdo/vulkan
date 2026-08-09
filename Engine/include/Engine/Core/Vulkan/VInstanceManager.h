@@ -12,17 +12,20 @@ class VInstanceManager
 public:
     const vk::raii::Instance& getVkInstance() { return m_vkInstance; };
 private:
+    GLFWwindow* m_window = nullptr;
     vk::raii::Context m_context;
     vk::raii::Instance m_vkInstance = nullptr;
     vk::raii::DebugUtilsMessengerEXT m_debugMessenger = nullptr;
-    vk::raii::PhysicalDevice physicalDevice = nullptr;
-    vk::raii::Device device = nullptr;
-    vk::PhysicalDeviceFeatures deviceFeatures;
-    vk::raii::Queue graphicsQueue = nullptr;
-    std::vector<const char*> requiredDeviceExtension = {vk::KHRSwapchainExtensionName};
+    vk::raii::SurfaceKHR m_surface = nullptr;
+    vk::raii::PhysicalDevice m_physicalDevice = nullptr;
+    vk::raii::Device m_device = nullptr;
+    vk::PhysicalDeviceFeatures m_deviceFeatures;
+    vk::raii::Queue m_graphicsQueue = nullptr;
+    Vector<const char*> m_vrequiredDeviceExtension = {vk::KHRSwapchainExtensionName};
 
     void createInstance();
     void setupDebugMessenger();
+    void createSurface();
     void pickPhysicalDevice();
     void createLogicalDevice();
 
@@ -34,6 +37,6 @@ private:
     void validateExtensions(const std::vector<char const*>& extensions) const;
 
 public:
-    VInstanceManager();
+    VInstanceManager(GLFWwindow* window);
     ~VInstanceManager() = default;
 };
