@@ -14,15 +14,18 @@ namespace Engine
         constexpr String APP_NAME = "App";
         constexpr String ENGINE_NAME = "Engine";
 
-        const std::vector<char const*> validationLayers = {
+        const std::vector<char const*> VALIDATION_LAYERS = {
             "VK_LAYER_KHRONOS_validation"
         };
 
+        inline const std::filesystem::path SHADER_PATH{
+            ENGINE_SHADER_DIR
+        };
 #ifdef NDEBUG
-        constexpr bool enableValidationLayers = false;
+        constexpr bool ENABLE_VALIDATION_LAYERS = false;
         constexpr bool DEBUG_MODE = false;
 #else
-        constexpr bool enableValidationLayers = true;
+        constexpr bool ENABLE_VALIDATION_LAYERS = true;
         constexpr bool DEBUG_MODE = true;
 #endif
     }

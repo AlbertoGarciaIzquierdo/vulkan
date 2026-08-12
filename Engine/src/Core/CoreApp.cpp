@@ -20,6 +20,9 @@ void CoreApp::Run()
         initVulkan();
         mainLoop();
     }
+    catch (const EngineException& exception) {
+        Logger::Log(LogLevel::Error,"{}", exception.what());
+    }
     catch (const std::exception& e)
     {
         Logger::Log(LogLevel::Error, "{}", e.what());

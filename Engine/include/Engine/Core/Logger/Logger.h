@@ -3,8 +3,8 @@
 //
 
 #pragma once
-#include <Engine/Utils/CommonIncludes.h>
 #include <Engine/Defaults/DefaultConfig.h>
+#include <Engine/Core/Logger/EngineException.h>
 
 enum class LogLevel {
     Trace,
@@ -23,7 +23,7 @@ public:
     template<typename... Args>
     static void Console(LogLevel level, std::format_string<Args...> fmt, Args&&... args)
     {
-        if (!Engine::Defaults::DEBUG_MODE) return;
+        if (!Engine::Defaults::DEBUG_MODE && (level == LogLevel::Trace || level == LogLevel::Debug)) return;
         const auto line = formatLine(level, fmt, std::forward<Args>(args)...);
         std::lock_guard<std::mutex> lock(s_consoleMutex);
         std::cout << line << '\n';
@@ -32,7 +32,8 @@ public:
     template<typename... Args>
     static void File(LogLevel level, std::format_string<Args...> fmt, Args&&... args)
     {
-        if (!Engine::Defaults::DEBUG_MODE) return;
+        if (!Engine::Defaults::DEBUG_MODE && (level == LogLevel::Trace || level == LogLevel::Debug)) return;
+
         if (!s_logFile.is_open()) return;
         const auto line = formatLine(level, fmt, std::forward<Args>(args)...);
         std::lock_guard<std::mutex> lock(s_fileMutex);
@@ -42,7 +43,7 @@ public:
     template<typename... Args>
     static void Log(LogLevel level, std::format_string<Args...> fmt, Args&&... args)
     {
-        if (!Engine::Defaults::DEBUG_MODE) return;
+        if (!Engine::Defaults::DEBUG_MODE && (level == LogLevel::Trace || level == LogLevel::Debug)) return;
         const auto line = formatLine(level, fmt, std::forward<Args>(args)...);
         {
             std::lock_guard<std::mutex> lock(s_consoleMutex);
@@ -73,7 +74,7 @@ private:
         std::strftime(timeBuf, sizeof(timeBuf), "%Y-%m-%d %H:%M:%S", &tm);
 
         // Mensaje formateado con std::format (C++20)
-        const auto msg      = std::format(fmt, std::forward<Args>(args)...);
+        const std::string msg = std::vformat(fmt.get(), std::make_format_args(args...));
         const auto levelStr = toString(level);
 
         return std::format("{}.{}\t[{}]\t {}",

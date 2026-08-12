@@ -8,37 +8,33 @@
 
 void Logger::Init()
 {
-    if (!Engine::Defaults::DEBUG_MODE) return;
-
     namespace fs = std::filesystem;
 
-    // Crear carpeta logs/ si no existe
     const fs::path logDir{"logs"};
     fs::create_directories(logDir);
 
-    // Nombre de archivo: Engine_YYYYMMDD.log (por ejemplo)
     const auto now = std::chrono::system_clock::now();
     const auto t   = std::chrono::system_clock::to_time_t(now);
+
     std::tm tm{};
     localtime_r(&t, &tm);
-
     char dateBuf[16];
     std::strftime(dateBuf, sizeof(dateBuf), "%Y%m%d", &tm);
 
     fs::path logPath = logDir / std::format("Engine_{}.log", dateBuf);
 
     s_logFile.open(logPath, std::ios::app);
-    Logger::Log(LogLevel::Info, "-------------------------------- Process started ---------------------------------------");
+
+    Log(LogLevel::Info, "-------------------------------- Process started ---------------------------------------");
 }
 
 void Logger::Shutdown()
 {
+    Log(LogLevel::Info, "-------------------------------- Process finished ---------------------------------------");
     if (s_logFile.is_open())
     {
-        Logger::Log(LogLevel::Info, "-------------------------------- Process finished ---------------------------------------");
         s_logFile.close();
     }
-
 }
 
 const char* Logger::toString(LogLevel level)
