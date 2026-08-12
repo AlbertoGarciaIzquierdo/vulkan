@@ -17,8 +17,8 @@ enum class LogLevel {
 
 class Logger {
 public:
-    static void Init();      // crear carpeta logs/ y abrir .log
-    static void Shutdown();  // cerrar el archivo
+    static void Init();
+    static void Shutdown();
 
     template<typename... Args>
     static void Console(LogLevel level, std::format_string<Args...> fmt, Args&&... args)
@@ -73,7 +73,6 @@ private:
         char timeBuf[32];
         std::strftime(timeBuf, sizeof(timeBuf), "%Y-%m-%d %H:%M:%S", &tm);
 
-        // Mensaje formateado con std::format (C++20)
         const std::string msg = std::vformat(fmt.get(), std::make_format_args(args...));
         const auto levelStr = toString(level);
 

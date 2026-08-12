@@ -65,6 +65,16 @@ void CoreApp::mainLoop()
 
 void CoreApp::cleanup()
 {
-    glfwDestroyWindow(window);
+    if (m_instanceManager)
+    {
+        m_instanceManager.reset();
+    }
+
+    if (window)
+    {
+        glfwDestroyWindow(window);
+        window = nullptr;
+    }
+
     glfwTerminate();
 }
