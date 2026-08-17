@@ -11,5 +11,9 @@ namespace Editor
     {
         constexpr UInt32 WIDTH = 800;
         constexpr UInt32 HEIGHT = 600;
+
+        const inline std::filesystem::path SHADER_PATH{
+            EDITOR_SHADER_DIR
+        };
     }
 }

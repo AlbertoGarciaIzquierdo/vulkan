@@ -32,7 +32,6 @@ void CoreApp::Run()
         Logger::Log(LogLevel::Critical, "Unknown error");
     }
 
-    // Pase lo que pase, intentamos limpiar
     cleanup();
     Logger::Shutdown();
 }

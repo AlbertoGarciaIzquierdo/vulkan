@@ -73,6 +73,7 @@ void VInstanceManager::createInstance()
 
 
     _vkInstance = vk::raii::Instance(_context, createInfo);
+    Logger::Log(LogLevel::Debug,"Created Instance");
 }
 
 std::vector<char const*> VInstanceManager::getRequiredInstanceExtensions() const
@@ -144,6 +145,7 @@ void VInstanceManager::setupDebugMessenger()
                                                                           .messageType     = messageTypeFlags,
                                                                           .pfnUserCallback = &debugCallback};
     _debugMessenger = _vkInstance.createDebugUtilsMessengerEXT( debugUtilsMessengerCreateInfoEXT );
+    Logger::Log(LogLevel::Debug,"Created Debug messenger");
 }
 
 void VInstanceManager::createSurface()
@@ -154,6 +156,7 @@ void VInstanceManager::createSurface()
         throw std::runtime_error("failed to create window surface!");
     }
     _surface = vk::raii::SurfaceKHR(_vkInstance, surface);
+    Logger::Log(LogLevel::Debug,"Created Surface");
 }
 
 void VInstanceManager::pickPhysicalDevice()
@@ -258,6 +261,7 @@ void VInstanceManager::createLogicalDevice()
     auto surfaceCapabilities = _physicalDevice.getSurfaceCapabilitiesKHR( *_surface );
     std::vector<vk::SurfaceFormatKHR> availableFormats = _physicalDevice.getSurfaceFormatsKHR( *_surface );
     std::vector<vk::PresentModeKHR> availablePresentModes = _physicalDevice.getSurfacePresentModesKHR( *_surface );
+    Logger::Log(LogLevel::Debug,"Created Logical Device");
 }
 
 bool VInstanceManager::isDeviceSuitable( vk::raii::PhysicalDevice const & physicalDevice )
@@ -363,6 +367,7 @@ void VInstanceManager::createSwapChain() {
 
     _swapChain       = vk::raii::SwapchainKHR(_device, swapChainCreateInfo);
     _swapChainImages = _swapChain.getImages();
+    Logger::Log(LogLevel::Debug,"Created Swapchain");
 }
 
 void VInstanceManager::createImageViews()
@@ -383,13 +388,59 @@ void VInstanceManager::createImageViews()
         imageViewCreateInfo.image = image;
         _swapChainImageViews.emplace_back( _device, imageViewCreateInfo );
     }
+    Logger::Log(LogLevel::Debug,"Created Image views and inserted");
 }
 
 void VInstanceManager::createGraphicsPipeline() {
-    vk::raii::ShaderModule shaderModule = createShaderModule(readFile( Engine::Defaults::SHADER_PATH/"triangle.spv"));
-    vk::PipelineShaderStageCreateInfo vertShaderStageInfo{ .stage = vk::ShaderStageFlagBits::eVertex, .module = shaderModule,  .pName = "vertMain" };
-    vk::PipelineShaderStageCreateInfo fragShaderStageInfo{ .stage = vk::ShaderStageFlagBits::eFragment, .module = shaderModule, .pName = "fragMain" };
+    vk::raii::ShaderModule shaderModule = createShaderModule(readFile(Engine::Defaults::SHADER_PATH/"triangle.spv"));
+
+    vk::PipelineShaderStageCreateInfo vertShaderStageInfo{.stage = vk::ShaderStageFlagBits::eVertex, .module = shaderModule, .pName = "vertMain"};
+    vk::PipelineShaderStageCreateInfo fragShaderStageInfo{.stage = vk::ShaderStageFlagBits::eFragment, .module = shaderModule, .pName = "fragMain"};
     vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+
+    vk::PipelineVertexInputStateCreateInfo   vertexInputInfo;
+    vk::PipelineInputAssemblyStateCreateInfo inputAssembly{.topology = vk::PrimitiveTopology::eTriangleList};
+    vk::PipelineViewportStateCreateInfo      viewportState{.viewportCount = 1, .scissorCount = 1};
+
+    vk::PipelineRasterizationStateCreateInfo rasterizer{.depthClampEnable        = vk::False,
+		                                                    .rasterizerDiscardEnable = vk::False,
+		                                                    .polygonMode             = vk::PolygonMode::eFill,
+		                                                    .cullMode                = vk::CullModeFlagBits::eBack,
+		                                                    .frontFace               = vk::FrontFace::eClockwise,
+		                                                    .depthBiasEnable         = vk::False,
+		                                                    .lineWidth               = 1.0f};
+
+    vk::PipelineMultisampleStateCreateInfo multisampling{.rasterizationSamples = vk::SampleCountFlagBits::e1, .sampleShadingEnable = vk::False};
+
+    vk::PipelineColorBlendAttachmentState colorBlendAttachment{
+		    .blendEnable    = vk::False,
+		    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA};
+
+    vk::PipelineColorBlendStateCreateInfo colorBlending{
+		    .logicOpEnable = vk::False, .logicOp = vk::LogicOp::eCopy, .attachmentCount = 1, .pAttachments = &colorBlendAttachment};
+
+    std::vector<vk::DynamicState>      dynamicStates = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+    vk::PipelineDynamicStateCreateInfo dynamicState{.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()), .pDynamicStates = dynamicStates.data()};
+
+    vk::PipelineLayoutCreateInfo pipelineLayoutInfo{.setLayoutCount = 0, .pushConstantRangeCount = 0};
+    _pipelineLayout = vk::raii::PipelineLayout(_device, pipelineLayoutInfo);
+
+    vk::StructureChain<vk::GraphicsPipelineCreateInfo, vk::PipelineRenderingCreateInfo> pipelineCreateInfoChain = {
+        {.stageCount          = 2,
+         .pStages             = shaderStages,
+         .pVertexInputState   = &vertexInputInfo,
+         .pInputAssemblyState = &inputAssembly,
+         .pViewportState      = &viewportState,
+         .pRasterizationState = &rasterizer,
+         .pMultisampleState   = &multisampling,
+         .pColorBlendState    = &colorBlending,
+         .pDynamicState       = &dynamicState,
+         .layout              = _pipelineLayout,
+         .renderPass          = nullptr},
+        {.colorAttachmentCount = 1, .pColorAttachmentFormats = &_swapChainSurfaceFormat.format}};
+
+    _graphicsPipeline = vk::raii::Pipeline(_device, nullptr, pipelineCreateInfoChain.get<vk::GraphicsPipelineCreateInfo>());
+    Logger::Log(LogLevel::Debug,"Created Graphic pipeline");
 }
 
 [[nodiscard]] vk::raii::ShaderModule VInstanceManager::createShaderModule(const std::vector<char>& code) const

@@ -27,6 +27,9 @@ private:
     vk::Extent2D                     _swapChainExtent;
     std::vector<vk::raii::ImageView> _swapChainImageViews;
 
+    vk::raii::PipelineLayout _pipelineLayout = nullptr;
+    vk::raii::Pipeline       _graphicsPipeline = nullptr;
+
     Vector<const char*> _vrequiredDeviceExtension = {vk::KHRSwapchainExtensionName};
 
     void createInstance();
