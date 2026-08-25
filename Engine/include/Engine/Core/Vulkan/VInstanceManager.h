@@ -32,11 +32,11 @@ private:
     vk::raii::Pipeline       _graphicsPipeline = nullptr;
 
     vk::raii::CommandPool _commandPool = nullptr;
-    vk::raii::CommandBuffer commandBuffer = nullptr;
+    std::vector<vk::raii::CommandBuffer> commandBuffers;
 
-    vk::raii::Semaphore presentCompleteSemaphore = nullptr;
-    vk::raii::Semaphore renderFinishedSemaphore  = nullptr;
-    vk::raii::Fence     drawFence                = nullptr;
+    std::vector<vk::raii::Semaphore> presentCompleteSemaphores;
+    std::vector<vk::raii::Semaphore> renderFinishedSemaphores;
+    std::vector<vk::raii::Fence> inFlightFences;
 
     Vector<const char*> _vrequiredDeviceExtension = {vk::KHRSwapchainExtensionName};
 
@@ -50,7 +50,7 @@ private:
     void createGraphicsPipeline();
     vk::raii::ShaderModule createShaderModule(const std::vector<char>& code) const;
     void createCommandPool();
-    void createCommandBuffer();
+    void createCommandBuffers();
     void recordCommandBuffer(uint32_t imageIndex);
     void transition_image_layout(
         uint32_t                imageIndex,

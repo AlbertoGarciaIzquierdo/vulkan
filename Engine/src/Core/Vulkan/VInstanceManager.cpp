@@ -7,6 +7,8 @@
 #include <Engine/Utils/TypeAliases.h>
 #include "Engine/Defaults/DefaultConfig.h"
 
+constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+
 static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugCallback(vk::DebugUtilsMessageSeverityFlagBitsEXT       severity,
                                                       vk::DebugUtilsMessageTypeFlagsEXT              type,
                                                       const vk::DebugUtilsMessengerCallbackDataEXT * pCallbackData,
@@ -48,7 +50,7 @@ VInstanceManager::VInstanceManager(GLFWwindow* window)
     createImageViews();
     createGraphicsPipeline();
     createCommandPool();
-    createCommandBuffer();
+    createCommandBuffers();
     createSyncObjects();
 }
 
@@ -469,16 +471,16 @@ void VInstanceManager::createCommandPool()
     _commandPool = vk::raii::CommandPool(_device, poolInfo);
 }
 
-void VInstanceManager::createCommandBuffer()
+void VInstanceManager::createCommandBuffers()
 {
-    vk::CommandBufferAllocateInfo allocInfo{ .commandPool = _commandPool, .level = vk::CommandBufferLevel::ePrimary, .commandBufferCount = 1 };
-
-    commandBuffer = std::move(vk::raii::CommandBuffers(_device, allocInfo).front());
+    vk::CommandBufferAllocateInfo allocInfo{.commandPool = _commandPool, .level = vk::CommandBufferLevel::ePrimary, .commandBufferCount = MAX_FRAMES_IN_FLIGHT};
+    commandBuffers = vk::raii::CommandBuffers( _device, allocInfo );
 }
 
 void VInstanceManager::recordCommandBuffer(uint32_t imageIndex)
 {
-    commandBuffer.begin({});
+    auto &commandBuffer = commandBuffers[queueIndex];
+		commandBuffer.begin({});
 
 		// Before starting rendering, transition the swapchain image to vk::ImageLayout::eColorAttachmentOptimal
 		transition_image_layout(
@@ -547,43 +549,54 @@ void VInstanceManager::transition_image_layout(uint32_t imageIndex, vk::ImageLay
         .dependencyFlags         = {},
         .imageMemoryBarrierCount = 1,
         .pImageMemoryBarriers    = &barrier};
-    commandBuffer.pipelineBarrier2(dependency_info);
+    commandBuffers[queueIndex].pipelineBarrier2(dependency_info);
 }
 
 void VInstanceManager::createSyncObjects()
 {
-    presentCompleteSemaphore = vk::raii::Semaphore(_device, vk::SemaphoreCreateInfo());
-    renderFinishedSemaphore  = vk::raii::Semaphore(_device, vk::SemaphoreCreateInfo());
-    drawFence                = vk::raii::Fence(_device, {.flags = vk::FenceCreateFlagBits::eSignaled});
+    assert(presentCompleteSemaphores.empty() && renderFinishedSemaphores.empty() && inFlightFences.empty());
+
+    for (size_t i = 0; i < _swapChainImages.size(); i++)
+    {
+        renderFinishedSemaphores.emplace_back(_device, vk::SemaphoreCreateInfo());
+    }
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        presentCompleteSemaphores.emplace_back(_device, vk::SemaphoreCreateInfo());
+        inFlightFences.emplace_back(_device, vk::FenceCreateInfo{.flags = vk::FenceCreateFlagBits::eSignaled});
+    }
 }
 
 void VInstanceManager::drawFrame()
 {
-    auto fenceResult = _device.waitForFences(*drawFence, vk::True, UINT64_MAX);
+    auto fenceResult = _device.waitForFences(*inFlightFences[queueIndex], vk::True, UINT64_MAX);
     if (fenceResult != vk::Result::eSuccess)
     {
         throw std::runtime_error("failed to wait for fence!");
     }
-    _device.resetFences(*drawFence);
+    _device.resetFences(*inFlightFences[queueIndex]);
 
-    auto [result, imageIndex] = _swapChain.acquireNextImage(UINT64_MAX, *presentCompleteSemaphore, nullptr);
+    auto [result, imageIndex] = _swapChain.acquireNextImage(UINT64_MAX, *presentCompleteSemaphores[queueIndex], nullptr);
 
+    commandBuffers[queueIndex].reset();
     recordCommandBuffer(imageIndex);
-
-    _graphicsQueue.waitIdle();        // NOTE: for simplicity, wait for the queue to be idle before starting the frame
-    // In the next chapter you see how to use multiple frames in flight and fences to sync
 
     vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
     const vk::SubmitInfo   submitInfo{.waitSemaphoreCount   = 1,
-                                      .pWaitSemaphores      = &*presentCompleteSemaphore,
+                                      .pWaitSemaphores      = &*presentCompleteSemaphores[queueIndex],
                                       .pWaitDstStageMask    = &waitDestinationStageMask,
                                       .commandBufferCount   = 1,
-                                      .pCommandBuffers      = &*commandBuffer,
+                                      .pCommandBuffers      = &*commandBuffers[queueIndex],
                                       .signalSemaphoreCount = 1,
-                                      .pSignalSemaphores    = &*renderFinishedSemaphore};
-    _graphicsQueue.submit(submitInfo, *drawFence);
+                                      .pSignalSemaphores    = &*renderFinishedSemaphores[imageIndex]};
+    _graphicsQueue.submit(submitInfo, *inFlightFences[queueIndex]);
 
-    const vk::PresentInfoKHR presentInfoKHR{.waitSemaphoreCount = 1, .pWaitSemaphores = &*renderFinishedSemaphore, .swapchainCount = 1, .pSwapchains = &*_swapChain, .pImageIndices = &imageIndex};
+    const vk::PresentInfoKHR presentInfoKHR{.waitSemaphoreCount = 1,
+                                            .pWaitSemaphores    = &*renderFinishedSemaphores[imageIndex],
+                                            .swapchainCount     = 1,
+                                            .pSwapchains        = &*_swapChain,
+                                            .pImageIndices      = &imageIndex};
     result = _graphicsQueue.presentKHR(presentInfoKHR);
     switch (result)
     {
@@ -595,4 +608,5 @@ void VInstanceManager::drawFrame()
     default:
         break;        // an unexpected result is returned!
     }
+    queueIndex = (queueIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 }
