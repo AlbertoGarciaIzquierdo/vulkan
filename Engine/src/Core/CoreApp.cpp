@@ -18,7 +18,7 @@ void CoreApp::Run()
     {
         initWindow();
         initVulkan();
-        mainLoop();
+        if (m_instanceManager && window) m_instanceManager->mainLoop(window);
     }
     catch (const EngineException& exception) {
         Logger::Log(LogLevel::Error,"{}", exception.what());
@@ -56,10 +56,10 @@ void CoreApp::initVulkan()
 
 void CoreApp::mainLoop()
 {
-    //while (!glfwWindowShouldClose(window))
-    //{
-    //    glfwPollEvents();
-    //}
+    while (!glfwWindowShouldClose(window))
+    {
+        glfwPollEvents();
+    }
 }
 
 void CoreApp::cleanup()

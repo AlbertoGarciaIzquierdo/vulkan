@@ -11,6 +11,7 @@ class VInstanceManager
 {
 public:
     const vk::raii::Instance& getVkInstance() { return _vkInstance; };
+    void mainLoop(GLFWwindow* window);
 private:
     GLFWwindow* _window = nullptr;
     vk::raii::Context _context;
@@ -30,6 +31,13 @@ private:
     vk::raii::PipelineLayout _pipelineLayout = nullptr;
     vk::raii::Pipeline       _graphicsPipeline = nullptr;
 
+    vk::raii::CommandPool _commandPool = nullptr;
+    vk::raii::CommandBuffer commandBuffer = nullptr;
+
+    vk::raii::Semaphore presentCompleteSemaphore = nullptr;
+    vk::raii::Semaphore renderFinishedSemaphore  = nullptr;
+    vk::raii::Fence     drawFence                = nullptr;
+
     Vector<const char*> _vrequiredDeviceExtension = {vk::KHRSwapchainExtensionName};
 
     void createInstance();
@@ -41,6 +49,19 @@ private:
     void createImageViews();
     void createGraphicsPipeline();
     vk::raii::ShaderModule createShaderModule(const std::vector<char>& code) const;
+    void createCommandPool();
+    void createCommandBuffer();
+    void recordCommandBuffer(uint32_t imageIndex);
+    void transition_image_layout(
+        uint32_t                imageIndex,
+        vk::ImageLayout         old_layout,
+        vk::ImageLayout         new_layout,
+        vk::AccessFlags2        src_access_mask,
+        vk::AccessFlags2        dst_access_mask,
+        vk::PipelineStageFlags2 src_stage_mask,
+        vk::PipelineStageFlags2 dst_stage_mask);
+    void createSyncObjects();
+    void drawFrame();
 
     bool isDeviceSuitable(vk::raii::PhysicalDevice const & physicalDevice);
 
@@ -55,6 +76,8 @@ private:
     vk::PresentModeKHR chooseSwapPresentMode(std::vector<vk::PresentModeKHR> const &availablePresentModes);
     vk::Extent2D chooseSwapExtent(vk::SurfaceCapabilitiesKHR const &capabilities);
     uint32_t chooseSwapMinImageCount(vk::SurfaceCapabilitiesKHR const &surfaceCapabilities);
+
+    uint32_t queueIndex = ~0;
 
 public:
     VInstanceManager(GLFWwindow* window);
