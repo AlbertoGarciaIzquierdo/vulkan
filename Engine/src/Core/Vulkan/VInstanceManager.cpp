@@ -14,7 +14,8 @@ static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugCallback(vk::DebugUtilsMessageSever
                                                       const vk::DebugUtilsMessengerCallbackDataEXT * pCallbackData,
                                                       void *                                         pUserData)
 {
-    std::cerr << "validation layer: type " << to_string(type) << " msg: " << pCallbackData->pMessage << std::endl;
+    Logger::Log(LogLevel::Warning, "Validation layer: type {} msg: {}", to_string(type), pCallbackData->pMessage);
+    //std::cerr << "validation layer: type " << to_string(type) << " msg: " << pCallbackData->pMessage << std::endl;
 
     return vk::False;
 }
@@ -38,9 +39,23 @@ static std::vector<char> readFile(const std::string& filename) {
     return buffer;
 }
 
-VInstanceManager::VInstanceManager(GLFWwindow* window)
-    : _window(window)
+static void framebufferResizeCallback(GLFWwindow* window, int width, int height)
 {
+    auto* app =
+        static_cast<VInstanceManager*>(
+            glfwGetWindowUserPointer(window)
+        );
+
+    if (app != nullptr)
+    {
+        app->framebufferResized = true;
+    }
+}
+
+VInstanceManager::VInstanceManager()
+{
+    initWindow();
+
     createInstance();
     setupDebugMessenger();
     createSurface();
@@ -52,16 +67,41 @@ VInstanceManager::VInstanceManager(GLFWwindow* window)
     createCommandPool();
     createCommandBuffers();
     createSyncObjects();
+
+    mainLoop();
 }
 
-void VInstanceManager::mainLoop(GLFWwindow* window)
+void VInstanceManager::initWindow()
 {
-    while (!glfwWindowShouldClose(window))
+    glfwInit();
+
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+    _window = glfwCreateWindow(Engine::Defaults::WIDTH, Engine::Defaults::HEIGHT, "Toto Engine 2", nullptr, nullptr);
+    glfwSetWindowUserPointer(_window, this);
+    glfwSetFramebufferSizeCallback(_window, framebufferResizeCallback);
+}
+
+void VInstanceManager::mainLoop()
+{
+    while (!glfwWindowShouldClose(_window))
     {
         glfwPollEvents();
         drawFrame();
     }
     _device.waitIdle();
+}
+
+void VInstanceManager::cleanup()
+{
+    glfwDestroyWindow(_window);
+    glfwTerminate();
+}
+
+void VInstanceManager::cleanupSwapChain()
+{
+    _swapChainImageViews.clear();
+    _swapChain = nullptr;
 }
 
 void VInstanceManager::createInstance()
@@ -479,7 +519,7 @@ void VInstanceManager::createCommandBuffers()
 
 void VInstanceManager::recordCommandBuffer(uint32_t imageIndex)
 {
-    auto &commandBuffer = commandBuffers[queueIndex];
+    auto &commandBuffer = commandBuffers[frameIndex];
 		commandBuffer.begin({});
 
 		// Before starting rendering, transition the swapchain image to vk::ImageLayout::eColorAttachmentOptimal
@@ -549,7 +589,7 @@ void VInstanceManager::transition_image_layout(uint32_t imageIndex, vk::ImageLay
         .dependencyFlags         = {},
         .imageMemoryBarrierCount = 1,
         .pImageMemoryBarriers    = &barrier};
-    commandBuffers[queueIndex].pipelineBarrier2(dependency_info);
+    commandBuffers[frameIndex].pipelineBarrier2(dependency_info);
 }
 
 void VInstanceManager::createSyncObjects()
@@ -570,27 +610,41 @@ void VInstanceManager::createSyncObjects()
 
 void VInstanceManager::drawFrame()
 {
-    auto fenceResult = _device.waitForFences(*inFlightFences[queueIndex], vk::True, UINT64_MAX);
+    auto fenceResult = _device.waitForFences(*inFlightFences[frameIndex], vk::True, UINT64_MAX);
     if (fenceResult != vk::Result::eSuccess)
     {
         throw std::runtime_error("failed to wait for fence!");
     }
-    _device.resetFences(*inFlightFences[queueIndex]);
 
-    auto [result, imageIndex] = _swapChain.acquireNextImage(UINT64_MAX, *presentCompleteSemaphores[queueIndex], nullptr);
+    auto [result, imageIndex] = _swapChain.acquireNextImage(UINT64_MAX, *presentCompleteSemaphores[frameIndex], nullptr);
 
-    commandBuffers[queueIndex].reset();
+    if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || framebufferResized)
+    {
+        framebufferResized = false;
+        recreateSwapChain();
+        return;
+    }
+    if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
+    {
+        assert(result == vk::Result::eTimeout || result == vk::Result::eNotReady);
+        throw std::runtime_error("failed to acquire swap chain image!");
+    }
+
+    // Only reset the fence if we are submitting work
+    _device.resetFences(*inFlightFences[frameIndex]);
+
+    commandBuffers[frameIndex].reset();
     recordCommandBuffer(imageIndex);
 
     vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
     const vk::SubmitInfo   submitInfo{.waitSemaphoreCount   = 1,
-                                      .pWaitSemaphores      = &*presentCompleteSemaphores[queueIndex],
+                                      .pWaitSemaphores      = &*presentCompleteSemaphores[frameIndex],
                                       .pWaitDstStageMask    = &waitDestinationStageMask,
                                       .commandBufferCount   = 1,
-                                      .pCommandBuffers      = &*commandBuffers[queueIndex],
+                                      .pCommandBuffers      = &*commandBuffers[frameIndex],
                                       .signalSemaphoreCount = 1,
                                       .pSignalSemaphores    = &*renderFinishedSemaphores[imageIndex]};
-    _graphicsQueue.submit(submitInfo, *inFlightFences[queueIndex]);
+    _graphicsQueue.submit(submitInfo, *inFlightFences[frameIndex]);
 
     const vk::PresentInfoKHR presentInfoKHR{.waitSemaphoreCount = 1,
                                             .pWaitSemaphores    = &*renderFinishedSemaphores[imageIndex],
@@ -598,15 +652,30 @@ void VInstanceManager::drawFrame()
                                             .pSwapchains        = &*_swapChain,
                                             .pImageIndices      = &imageIndex};
     result = _graphicsQueue.presentKHR(presentInfoKHR);
-    switch (result)
+    if ((result == vk::Result::eSuboptimalKHR) || (result == vk::Result::eErrorOutOfDateKHR))
     {
-    case vk::Result::eSuccess:
-        break;
-    case vk::Result::eSuboptimalKHR:
-        std::cout << "vk::Queue::presentKHR returned vk::Result::eSuboptimalKHR !\n";
-        break;
-    default:
-        break;        // an unexpected result is returned!
+        recreateSwapChain();
     }
-    queueIndex = (queueIndex + 1) % MAX_FRAMES_IN_FLIGHT;
+    else
+    {
+        // There are no other success codes than eSuccess; on any error code, presentKHR already threw an exception.
+        assert(result == vk::Result::eSuccess);
+    }
+    frameIndex = (frameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
+}
+
+void VInstanceManager::recreateSwapChain()
+{
+    int width = 0, height = 0;
+    glfwGetFramebufferSize(_window, &width, &height);
+    while (width == 0 || height == 0) {
+        glfwGetFramebufferSize(_window, &width, &height);
+        glfwWaitEvents();
+    }
+
+    _device.waitIdle();
+
+    cleanupSwapChain();
+    createSwapChain();
+    createImageViews();
 }

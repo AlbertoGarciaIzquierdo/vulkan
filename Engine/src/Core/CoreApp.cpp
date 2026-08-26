@@ -10,15 +10,19 @@
 #include <Engine/Core/Vulkan/VInstanceManager.h>
 #include <Engine/Defaults/DefaultConfig.h>
 
+CoreApp::~CoreApp()
+{
+    cleanup();
+    Logger::Shutdown();
+}
+
 void CoreApp::Run()
 {
     Logger::Init();
 
     try
     {
-        initWindow();
-        initVulkan();
-        if (m_instanceManager && window) m_instanceManager->mainLoop(window);
+        m_instanceManager = std::make_unique<VInstanceManager>();
     }
     catch (const EngineException& exception) {
         Logger::Log(LogLevel::Error,"{}", exception.what());
@@ -31,35 +35,6 @@ void CoreApp::Run()
     {
         Logger::Log(LogLevel::Critical, "Unknown error");
     }
-
-    cleanup();
-    Logger::Shutdown();
-}
-
-void CoreApp::initWindow()
-{
-    glfwInit();
-
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); // TODO: This line should be deleted in the future. If not, window wont be resizable
-    window = glfwCreateWindow(Engine::Defaults::WIDTH, Engine::Defaults::HEIGHT, "Vulkan window", nullptr, nullptr);
-}
-
-void CoreApp::initVulkan()
-{
-    uint32_t extensionCount = 0;
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-    Logger::Log(LogLevel::Debug, "{} Extensions supported", extensionCount);
-
-    m_instanceManager = std::make_unique<VInstanceManager>(window);
-}
-
-void CoreApp::mainLoop()
-{
-    while (!glfwWindowShouldClose(window))
-    {
-        glfwPollEvents();
-    }
 }
 
 void CoreApp::cleanup()
@@ -68,12 +43,4 @@ void CoreApp::cleanup()
     {
         m_instanceManager.reset();
     }
-
-    if (window)
-    {
-        glfwDestroyWindow(window);
-        window = nullptr;
-    }
-
-    glfwTerminate();
 }

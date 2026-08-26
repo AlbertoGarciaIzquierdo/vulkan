@@ -15,18 +15,71 @@ enum class LogLevel {
     Critical
 };
 
+namespace ConsoleColor
+{
+    inline constexpr std::string_view Reset =
+        "\x1B[0m";
+
+    inline constexpr std::string_view White =
+        "\x1B[0m";
+
+    inline constexpr std::string_view Grey =
+        "\x1B[37m";
+
+    inline constexpr std::string_view Yellow =
+        "\x1B[33m";
+
+    inline constexpr std::string_view Red =
+        "\x1B[31m";
+
+    inline constexpr std::string_view Green =
+        "\x1B[32m";
+
+    inline constexpr std::string_view BrightRed =
+        "\x1B[1;31m";
+}
+
 class Logger {
 public:
     static void Init();
     static void Shutdown();
 
+    static std::string_view colorForLevel(LogLevel level)
+    {
+        switch (level)
+        {
+        case LogLevel::Trace:
+        case LogLevel::Debug:
+            return ConsoleColor::Grey;
+
+        case LogLevel::Info:
+            return ConsoleColor::White;
+
+        case LogLevel::Warning:
+            return ConsoleColor::Yellow;
+
+        case LogLevel::Error:
+            return ConsoleColor::Red;
+
+        case LogLevel::Critical:
+            return "\033[1;31m"; // Rojo intenso
+        }
+
+        return ConsoleColor::Reset;
+    }
+
     template<typename... Args>
     static void Console(LogLevel level, std::format_string<Args...> fmt, Args&&... args)
     {
         if (!Engine::Defaults::DEBUG_MODE && (level == LogLevel::Trace || level == LogLevel::Debug)) return;
+
         const auto line = formatLine(level, fmt, std::forward<Args>(args)...);
+
+        const auto color = colorForLevel(level);
+
         std::lock_guard<std::mutex> lock(s_consoleMutex);
-        std::cout << line << '\n';
+
+        std::cout << color << line << ConsoleColor::Reset << '\n';
     }
 
     template<typename... Args>
@@ -47,7 +100,8 @@ public:
         const auto line = formatLine(level, fmt, std::forward<Args>(args)...);
         {
             std::lock_guard<std::mutex> lock(s_consoleMutex);
-            std::cout << line << '\n';
+            const auto color = colorForLevel(level);
+            std::cout << color << line << ConsoleColor::Reset << '\n';
         }
         {
             std::lock_guard<std::mutex> lock(s_fileMutex);

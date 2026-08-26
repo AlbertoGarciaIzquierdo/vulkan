@@ -11,7 +11,13 @@ class VInstanceManager
 {
 public:
     const vk::raii::Instance& getVkInstance() { return _vkInstance; };
-    void mainLoop(GLFWwindow* window);
+    // GLFW related functions
+    void initWindow();
+    void mainLoop();
+    void cleanup();
+    void cleanupSwapChain();
+
+    bool framebufferResized = false;
 private:
     GLFWwindow* _window = nullptr;
     vk::raii::Context _context;
@@ -62,6 +68,7 @@ private:
         vk::PipelineStageFlags2 dst_stage_mask);
     void createSyncObjects();
     void drawFrame();
+    void recreateSwapChain();
 
     bool isDeviceSuitable(vk::raii::PhysicalDevice const & physicalDevice);
 
@@ -78,8 +85,8 @@ private:
     uint32_t chooseSwapMinImageCount(vk::SurfaceCapabilitiesKHR const &surfaceCapabilities);
 
     uint32_t queueIndex = ~0;
-
+    uint32_t frameIndex = 0;
 public:
-    VInstanceManager(GLFWwindow* window);
+    VInstanceManager();
     ~VInstanceManager() = default;
 };

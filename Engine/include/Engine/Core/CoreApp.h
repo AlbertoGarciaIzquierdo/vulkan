@@ -12,14 +12,9 @@ class CoreApp : public BaseApplication
 {
 public:
     CoreApp() = default;
-    ~CoreApp() = default;
+    ~CoreApp();
     void Run() override;
 private:
-    void initWindow();
-    void initVulkan();
-    void mainLoop();
     void cleanup();
-
-    GLFWwindow* window = nullptr;
     UniqPtr<VInstanceManager> m_instanceManager = nullptr;
 };
