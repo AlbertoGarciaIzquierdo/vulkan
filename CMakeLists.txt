@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 3.20)
 
+if (CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
+    message(FATAL_ERROR
+            "In-source builds are not allowed. Please configure into a separate "
+            "directory, e.g.: cmake -B build  (or use a CMake preset)."
+    )
+endif()
+
 project(SharpEngine LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
