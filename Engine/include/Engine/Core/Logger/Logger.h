@@ -79,7 +79,7 @@ public:
 
         std::lock_guard<std::mutex> lock(s_consoleMutex);
 
-        std::cout << color << line << ConsoleColor::Reset << '\n';
+        std::print("{}{}{}\n", color, line, ConsoleColor::Reset);
     }
 
     template<typename... Args>
@@ -101,7 +101,7 @@ public:
         {
             std::lock_guard<std::mutex> lock(s_consoleMutex);
             const auto color = colorForLevel(level);
-            std::cout << color << line << ConsoleColor::Reset << '\n';
+            std::print("{}{}{}\n", color, line, ConsoleColor::Reset);
         }
         {
             std::lock_guard<std::mutex> lock(s_fileMutex);

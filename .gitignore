@@ -71,6 +71,7 @@ Testing/
 
 # IDE related files
 .idea/
+.vscode/
 
 # Compiled shaders
 *.spv
