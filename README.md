@@ -1,7 +1,7 @@
 # Vulkan game engine
 Vulkan game engine
 
-As I dont really like all the temporal features and AI content I am trying to create my own small 3D engine.
+As I dont really like all the temporal features and AI generated content. I am trying to create my own small 3D engine.
 It's just for fun. I don't think this will be finished.
 
 But, I am kinda tired of all the DLSS, TAA, FSR... and those kind of things.
