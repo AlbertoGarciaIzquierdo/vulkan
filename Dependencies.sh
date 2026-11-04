@@ -1,7 +1,7 @@
-## Requirements Linux (Fedora)
-## Someday I have to add this packages for any other distro. Sorry but I stopped distro hopping a long time ago.
-## If someone add it for me I will be happy.
+## Linux build dependencies.
+## Uncomment and run the command for your distribution.
 
+# Fedora
 sudo dnf install \
     vulkan-tools \
     vulkan-loader-devel \
@@ -10,3 +10,26 @@ sudo dnf install \
     glslc \
     libXi-devel \
     libXxf86vm-devel
+
+# Debian / Ubuntu
+# sudo apt install \
+#     vulkan-tools \
+#     libvulkan-dev \
+#     vulkan-validationlayers \
+#     libglfw3-dev \
+#     glslc \
+#     libxi-dev \
+#     libxxf86vm-dev
+
+# Arch Linux
+# sudo pacman -S --needed \
+#     vulkan-tools \
+#     vulkan-headers \
+#     vulkan-icd-loader \
+#     vulkan-validation-layers \
+#     glfw \
+#     shaderc \
+#     libxi \
+#     libxxf86vm
+
+# Windows dependencies are documented in README.md.
