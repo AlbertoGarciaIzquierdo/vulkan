@@ -3092,9 +3092,13 @@ MSCGEN_TOOL            =
 MSCFILE_DIRS           =
 
 
-PROJECT_NAME = "Vulkan game engine"
+PROJECT_NAME = "VSharpEngine"
 PROJECT_BRIEF = "A small Vulkan-based 3D engine by Alberto Garcia"
-INPUT = README.md Engine/include Engine/src Editor/include Editor/src
+INPUT                  = README.md
+                         Engine/include \
+                         Engine/src \
+                         Editor/include \
+                         Editor/src
 RECURSIVE = YES
 USE_MDFILE_AS_MAINPAGE = README.md
 OUTPUT_DIRECTORY = docs
