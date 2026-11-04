@@ -7,19 +7,29 @@
 #include <Engine/Utils/TypeAliases.h>
 #include "Engine/Defaults/DefaultConfig.h"
 
+/** @brief Maximum number of frames the CPU can record while the GPU is still rendering. */
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
+/**
+ * @brief Vulkan debug messenger callback; forwards validation messages to the Logger as warnings.
+ * @return Always vk::False so the triggering Vulkan call is not aborted.
+ */
 static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugCallback(vk::DebugUtilsMessageSeverityFlagBitsEXT       severity,
                                                       vk::DebugUtilsMessageTypeFlagsEXT              type,
                                                       const vk::DebugUtilsMessengerCallbackDataEXT * pCallbackData,
                                                       void *                                         pUserData)
 {
     Logger::Log(LogLevel::Warning, "Validation layer: type {} msg: {}", to_string(type), pCallbackData->pMessage);
-    //std::cerr << "validation layer: type " << to_string(type) << " msg: " << pCallbackData->pMessage << std::endl;
 
     return vk::False;
 }
 
+/**
+ * @brief Reads a whole binary file into memory.
+ * @param filename Path of the file (e.g. a compiled SPIR-V shader).
+ * @return File contents as bytes.
+ * @throws EngineException if the file cannot be opened.
+ */
 static std::vector<char> readFile(const std::string& filename) {
     std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
@@ -37,19 +47,6 @@ static std::vector<char> readFile(const std::string& filename) {
     file.close();
 
     return buffer;
-}
-
-static void framebufferResizeCallback(GLFWwindow* window, int width, int height)
-{
-    auto* app =
-        static_cast<VInstanceManager*>(
-            glfwGetWindowUserPointer(window)
-        );
-
-    if (app != nullptr)
-    {
-        app->framebufferResized = true;
-    }
 }
 
 VInstanceManager::VInstanceManager()
@@ -71,31 +68,50 @@ VInstanceManager::VInstanceManager()
     mainLoop();
 }
 
+VInstanceManager::~VInstanceManager()
+{
+    cleanupSwapChain();
+    cleanup();
+}
+
 void VInstanceManager::initWindow()
 {
-    glfwInit();
+    SDL_Init(SDL_INIT_VIDEO);
 
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-    _window = glfwCreateWindow(Engine::Defaults::WIDTH, Engine::Defaults::HEIGHT, "Toto Engine 2", nullptr, nullptr);
-    glfwSetWindowUserPointer(_window, this);
-    glfwSetFramebufferSizeCallback(_window, framebufferResizeCallback);
+    _window = SDL_CreateWindow(
+        "Toto Engine 2",
+        Engine::Defaults::WIDTH,
+        Engine::Defaults::HEIGHT,
+        SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE
+    );
+    SDL_SetPointerProperty(SDL_GetWindowProperties(_window), "app", this);
 }
 
 void VInstanceManager::mainLoop()
 {
-    while (!glfwWindowShouldClose(_window))
+    bool running = true;
+    SDL_Event event;
+
+    while (running)
     {
-        glfwPollEvents();
-        drawFrame();
+        while (SDL_PollEvent(&event))
+        {
+            if (event.type == SDL_EVENT_QUIT)
+                running = false;
+            else if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED)
+                framebufferResized = true;
+        }
+
+        if (running)
+            drawFrame();
     }
     _device.waitIdle();
 }
 
 void VInstanceManager::cleanup()
 {
-    glfwDestroyWindow(_window);
-    glfwTerminate();
+    SDL_DestroyWindow(_window);
+    SDL_Quit();
 }
 
 void VInstanceManager::cleanupSwapChain()
@@ -133,10 +149,12 @@ void VInstanceManager::createInstance()
 
 std::vector<char const*> VInstanceManager::getRequiredInstanceExtensions() const
 {
-    uint32_t glfwExtensionCount = 0;
-    auto glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+    uint32_t sdlExtensionCount = 0;
+    const char* const* names = SDL_Vulkan_GetInstanceExtensions(&sdlExtensionCount);
+    if (!names)
+        throw EngineException("Failed to get SDL Vulkan extensions");   
 
-    Vector extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+    std::vector<const char*> extensions(names, names + sdlExtensionCount);
     if (Engine::Defaults::ENABLE_VALIDATION_LAYERS)
     {
         extensions.push_back(vk::EXTDebugUtilsExtensionName);
@@ -206,7 +224,7 @@ void VInstanceManager::setupDebugMessenger()
 void VInstanceManager::createSurface()
 {
     VkSurfaceKHR surface;
-    if (glfwCreateWindowSurface(*_vkInstance, _window, nullptr, &surface) != 0)
+    if (!SDL_Vulkan_CreateSurface(_window, *_vkInstance, nullptr, &surface))
     {
         throw std::runtime_error("failed to create window surface!");
     }
@@ -376,7 +394,7 @@ vk::Extent2D VInstanceManager::chooseSwapExtent(vk::SurfaceCapabilitiesKHR const
         return capabilities.currentExtent;
     }
     int width, height;
-    glfwGetFramebufferSize(_window, &width, &height);
+    SDL_GetWindowSizeInPixels(_window, &width, &height);
 
     return {
         std::clamp<uint32_t>(width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
@@ -618,9 +636,9 @@ void VInstanceManager::drawFrame()
 
     auto [result, imageIndex] = _swapChain.acquireNextImage(UINT64_MAX, *presentCompleteSemaphores[frameIndex], nullptr);
 
-    if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || framebufferResized)
+    // Only bail out when nothing was acquired; otherwise the semaphore would stay signaled.
+    if (result == vk::Result::eErrorOutOfDateKHR)
     {
-        framebufferResized = false;
         recreateSwapChain();
         return;
     }
@@ -652,8 +670,9 @@ void VInstanceManager::drawFrame()
                                             .pSwapchains        = &*_swapChain,
                                             .pImageIndices      = &imageIndex};
     result = _graphicsQueue.presentKHR(presentInfoKHR);
-    if ((result == vk::Result::eSuboptimalKHR) || (result == vk::Result::eErrorOutOfDateKHR))
+    if ((result == vk::Result::eSuboptimalKHR) || (result == vk::Result::eErrorOutOfDateKHR) || framebufferResized)
     {
+        framebufferResized = false;
         recreateSwapChain();
     }
     else
@@ -667,10 +686,10 @@ void VInstanceManager::drawFrame()
 void VInstanceManager::recreateSwapChain()
 {
     int width = 0, height = 0;
-    glfwGetFramebufferSize(_window, &width, &height);
+    SDL_GetWindowSizeInPixels(_window, &width, &height);
     while (width == 0 || height == 0) {
-        glfwGetFramebufferSize(_window, &width, &height);
-        glfwWaitEvents();
+        SDL_GetWindowSizeInPixels(_window, &width, &height);
+        SDL_WaitEvent(nullptr);
     }
 
     _device.waitIdle();

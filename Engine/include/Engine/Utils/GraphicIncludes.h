@@ -6,4 +6,5 @@
 
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
-#include <GLFW/glfw3.h>
+#include <SDL3/SDL_vulkan.h>
+#include <SDL3/SDL.h>

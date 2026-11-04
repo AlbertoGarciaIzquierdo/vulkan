@@ -1,5 +1,5 @@
 find_package(Vulkan REQUIRED)
-find_package(glfw3 REQUIRED)
+find_package(SDL3 REQUIRED)
 
 add_library(Engine STATIC)
 
@@ -10,7 +10,7 @@ target_include_directories(Engine
 
 target_link_libraries(Engine
         PUBLIC
-        glfw
+        SDL3::SDL3
         Vulkan::Vulkan
 )
 

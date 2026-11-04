@@ -3,31 +3,43 @@
 
 # Fedora
 sudo dnf install \
+    clang \
+    lld \
+    doxygen \
     vulkan-tools \
     vulkan-loader-devel \
     vulkan-validation-layers \
+    SDL3-devel \
     glfw-devel \
     glslc \
     libXi-devel \
     libXxf86vm-devel
 
-# Debian / Ubuntu
+# Debian / Ubuntu Note: This is not tested.
 # sudo apt install \
-#     vulkan-tools \
-#     libvulkan-dev \
-#     vulkan-validationlayers \
-#     libglfw3-dev \
-#     glslc \
-#     libxi-dev \
-#     libxxf86vm-dev
+#    clang \
+#    lld \
+#    doxygen \
+#    vulkan-tools \
+#    libvulkan-dev \
+#    vulkan-validationlayers \
+#    libglfw3-dev \
+#    libsdl3-dev \
+#    glslc \
+#    libxi-dev \
+#    libxxf86vm-dev
 
-# Arch Linux
+# Arch Linux Note: This is not tested.
 # sudo pacman -S --needed \
+#     clang \
+#     lld \
+#     doxygen \
 #     vulkan-tools \
 #     vulkan-headers \
 #     vulkan-icd-loader \
 #     vulkan-validation-layers \
 #     glfw \
+#     SDL3-devel \
 #     shaderc \
 #     libxi \
 #     libxxf86vm

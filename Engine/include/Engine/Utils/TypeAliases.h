@@ -1,5 +1,6 @@
 #include <Engine/Utils/CommonIncludes.h>
 
+/** @brief Convenience aliases for common standard-library types. */
 using Text = std::string;
 using String = const char*;
 

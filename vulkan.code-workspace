@@ -4,5 +4,11 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"C_Cpp.autocomplete": "default",
+		"C_Cpp.default.intelliSenseMode": "clang-x64",
+		"C_Cpp.default.compileCommands": [
+			"${workspaceFolder}/build/debug/compile_commands.json"
+		]
+	}
 }

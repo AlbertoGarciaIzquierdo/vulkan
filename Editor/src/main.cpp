@@ -8,6 +8,7 @@
 
 #include <Engine/Core/CoreApp.h>
 
+/** @brief Entry point: creates the engine application and runs it. */
 int main()
 {
     CoreApp coreApp;

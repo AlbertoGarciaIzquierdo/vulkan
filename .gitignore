@@ -75,3 +75,4 @@ Testing/
 
 # Compiled shaders
 *.spv
+docs/*

@@ -6,6 +6,7 @@
 #include <Engine/Defaults/DefaultConfig.h>
 #include <Engine/Core/Logger/EngineException.h>
 
+/** @brief Severity of a log message, from least to most severe. */
 enum class LogLevel {
     Trace,
     Debug,
@@ -15,6 +16,7 @@ enum class LogLevel {
     Critical
 };
 
+/** @brief ANSI escape sequences used to color console output. */
 namespace ConsoleColor
 {
     inline constexpr std::string_view Reset =
@@ -39,11 +41,25 @@ namespace ConsoleColor
         "\x1B[1;31m";
 }
 
+/**
+ * @class Logger
+ * @brief Thread-safe static logger that writes to the console and to a daily log file.
+ *
+ * Messages use `std::format` syntax. Trace and Debug messages are discarded
+ * when `Engine::Defaults::DEBUG_MODE` is false.
+ */
 class Logger {
 public:
+    /** @brief Opens `logs/Engine_YYYYMMDD.log` in append mode and logs a start marker. */
     static void Init();
+    /** @brief Logs an end marker and closes the log file. */
     static void Shutdown();
 
+    /**
+     * @brief Maps a log level to its console color.
+     * @param level Severity of the message.
+     * @return ANSI escape sequence for that level.
+     */
     static std::string_view colorForLevel(LogLevel level)
     {
         switch (level)
@@ -62,12 +78,18 @@ public:
             return ConsoleColor::Red;
 
         case LogLevel::Critical:
-            return "\033[1;31m"; // Rojo intenso
+            return "\033[1;31m"; // Bright red
         }
 
         return ConsoleColor::Reset;
     }
 
+    /**
+     * @brief Writes a formatted message to the console only.
+     * @param level Severity of the message.
+     * @param fmt   `std::format` string.
+     * @param args  Values to format.
+     */
     template<typename... Args>
     static void Console(LogLevel level, std::format_string<Args...> fmt, Args&&... args)
     {
@@ -82,6 +104,12 @@ public:
         std::print("{}{}{}\n", color, line, ConsoleColor::Reset);
     }
 
+    /**
+     * @brief Writes a formatted message to the log file only (ignored if the file is not open).
+     * @param level Severity of the message.
+     * @param fmt   `std::format` string.
+     * @param args  Values to format.
+     */
     template<typename... Args>
     static void File(LogLevel level, std::format_string<Args...> fmt, Args&&... args)
     {
@@ -93,6 +121,12 @@ public:
         s_logFile << line << '\n';
     }
 
+    /**
+     * @brief Writes a formatted message to both the console and the log file.
+     * @param level Severity of the message.
+     * @param fmt   `std::format` string.
+     * @param args  Values to format.
+     */
     template<typename... Args>
     static void Log(LogLevel level, std::format_string<Args...> fmt, Args&&... args)
     {
@@ -111,6 +145,7 @@ public:
     }
 
 private:
+    /** @brief Builds `timestamp<TAB>[LEVEL]<TAB> message` from a format string. */
     template<typename... Args>
     static std::string formatLine(LogLevel level, std::format_string<Args...> fmt, Args&&... args)
     {
@@ -122,7 +157,7 @@ private:
         const auto ms  = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
 
         std::tm tm{};
-        localtime_r(&t, &tm);  // en Windows sería localtime_s
+        localtime_r(&t, &tm);  // On Windows this would be localtime_s
 
         char timeBuf[32];
         std::strftime(timeBuf, sizeof(timeBuf), "%Y-%m-%d %H:%M:%S", &tm);
@@ -137,10 +172,11 @@ private:
                            msg);
     }
 
+    /** @brief Returns the upper-case name of a log level. */
     static const char* toString(LogLevel level);
 
-    // Estado global del logger
-    static inline std::mutex     s_consoleMutex{};
-    static inline std::mutex     s_fileMutex{};
-    static inline std::ofstream  s_logFile{};
+    // Global logger state
+    static inline std::mutex     s_consoleMutex{};  ///< Serializes console output.
+    static inline std::mutex     s_fileMutex{};     ///< Serializes file output.
+    static inline std::ofstream  s_logFile{};       ///< Daily log file.
 };
