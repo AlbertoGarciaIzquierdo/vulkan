@@ -110,7 +110,11 @@ void VInstanceManager::mainLoop()
 
 void VInstanceManager::cleanup()
 {
+    // The surface must be destroyed while the window and SDL are still alive,
+    // otherwise the RAII member would be destroyed after SDL_Quit() (use-after-free).
+    _surface = nullptr;
     SDL_DestroyWindow(_window);
+    _window = nullptr;
     SDL_Quit();
 }
 
