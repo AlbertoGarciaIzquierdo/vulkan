@@ -1,4 +1,4 @@
-# SharpEngine
+# SharpEngine (Documentation of the project is in Github Pages)
 
 SharpEngine is a small Vulkan-based 3D engine project built for learning and experimentation. The current application opens an SDL3 window and renders a triangle; the engine is still a work in progress.
 
